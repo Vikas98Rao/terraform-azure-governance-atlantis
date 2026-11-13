@@ -1,0 +1,17 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform/
+.terraform.lock.hcl
+*.bin
+*.json
+!package.json
+!atlantis.yaml
+
+# System & IDE
+.DS_Store
+.idea/
+.vscode/
+*.log

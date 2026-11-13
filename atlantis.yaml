@@ -1,0 +1,38 @@
+# ==============================================================================
+# Atlantis GitOps Server-Side Pull Request Automation Configuration
+# Enforces OPA / Conftest Governance Gates Prior to Merge & Apply
+# ==============================================================================
+
+version: 3
+automerge: false
+parallel_plan: true
+parallel_apply: false
+
+projects:
+  - name: azure-governance-prod
+    dir: infrastructure
+    workspace: default
+    terraform_version: v1.5.7
+    autoplan:
+      when_modified: ["infrastructure/**/*.tf", "infrastructure/**/*.tfvars", "policy/**/*.rego"]
+      enabled: true
+    apply_requirements: [approved, mergeable]
+    workflow: azure-governance-workflow
+
+workflows:
+  azure-governance-workflow:
+    plan:
+      steps:
+        - init:
+            extra_args: ["-backend=true"]
+        - run: terraform fmt -check
+        - plan:
+            extra_args: ["-var-file=../examples/terraform.tfvars.example", "-out=$PLANFILE"]
+        - run: terraform show -json $PLANFILE > $SHOWFILE.json
+        # Policy as Code Gate via Open Policy Agent (OPA) / Conftest
+        - run: |
+            echo "Evaluating Open Policy Agent (OPA) governance policies..."
+            conftest test $SHOWFILE.json --policy ../policy/ --output table
+    apply:
+      steps:
+        - apply

@@ -1,0 +1,17 @@
+environment        = "prod"
+location           = "eastus"
+project_name       = "govcloud"
+vnet_address_space = ["10.20.0.0/16"]
+
+subnet_prefixes = {
+  compute = "10.20.1.0/24"
+  data    = "10.20.2.0/24"
+}
+
+tags = {
+  Environment = "prod"
+  Owner       = "vikas.rao"
+  Project     = "azure-governance"
+  CostCenter  = "CC-5501"
+  ManagedBy   = "Terraform-Atlantis"
+}

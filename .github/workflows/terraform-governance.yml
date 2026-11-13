@@ -1,0 +1,53 @@
+name: 'Terraform Governance & OPA Policy Gate'
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infrastructure/**'
+      - 'policy/**'
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/**'
+      - 'policy/**'
+
+jobs:
+  governance-validation:
+    name: 'Lint, Scan & Policy Enforcement'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Install Conftest (Open Policy Agent)
+        run: |
+          wget https://github.com/open-policy-agent/conftest/releases/download/v0.45.0/conftest_0.45.0_Linux_x86_64.tar.gz
+          tar xzf conftest_0.45.0_Linux_x86_64.tar.gz
+          sudo mv conftest /usr/local/bin/
+
+      - name: Check Terraform Formatting
+        run: terraform fmt -check -recursive
+        working-directory: infrastructure
+
+      - name: Terraform Init & Validate
+        run: |
+          terraform init -backend=false
+          terraform validate
+        working-directory: infrastructure
+
+      - name: Generate Speculative Plan in JSON
+        run: |
+          terraform plan -var-file="../examples/terraform.tfvars.example" -out=tfplan.bin
+          terraform show -json tfplan.bin > tfplan.json
+        working-directory: infrastructure
+
+      - name: Execute OPA Conftest Policies
+        run: |
+          echo "### Running Open Policy Agent (OPA) Guardrail Scan..."
+          conftest test infrastructure/tfplan.json --policy policy/ --output table
